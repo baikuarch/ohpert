@@ -1,0 +1,714 @@
+{
+  "repos": [
+    {
+      "name": "ohpert-api",
+      "role": "backend"
+    },
+    {
+      "name": "ohpert-web",
+      "role": "frontend"
+    },
+    {
+      "name": "ohpert-admin",
+      "role": "frontend"
+    }
+  ],
+  "architecture": {
+    "generatedAt": "2026-10-27T02:02:04.126Z",
+    "aiModel": "gpt-4o-mini",
+    "narrative": "本组三个工程构成典型的前后端分离多端架构。ohpert-api 是唯一的后端服务（Express，入口 samples/ohpert-api/src/server.js），按 routes/services/models/middleware 分层组织，共 9 条业务路由，覆盖认证（POST /login、/register、/refresh）、订单（GET /list、GET /:id、POST /、POST /:id/cancel）和用户资料（GET/PUT /profile），使用 JWT_SECRET 做鉴权，属于小型业务后端。ohpert-web 是 Vue 3 + Vite 的 C 端前端，src/api 下按 auth/order/user 模块封装 Axios 调用，通过 VITE_API_BASE 指向后端，是后端 8 个接口的主要消费方，覆盖登录注册、订单列表/详情/创建/取消、用户资料读写全链路。ohpert-admin 是 React + Ant Design 的管理端，体量很小（仅 2 个 API 调用：GET /user/list、GET /admin/audit-logs），但这两个接口在 ohpert-api 的路由清单中并不存在，说明管理端依赖的后端能力尚未实现或尚未对齐。数据流转：用户在 ohpert-web 提交凭证 → api 颁发 JWT → 前端携带 token 调用订单/用户接口 → api 通过 middleware（推测含鉴权中间件，src/middleware 有 2 个文件）校验后读写 models 中的订单/用户数据。工程间无共享代码库，接口契约完全靠人工对齐，未发现共享类型或枚举定义（各工程均无类型导出）。业务域可划分为认证、订单、用户资料、管理后台四块。\n\n### 关键链路\n#### 登录鉴权\n1. 用户在 ohpert-web 登录页提交凭证\n2. src/api/auth.js POST /auth/login（经 VITE_API_BASE 拼接）\n3. ohpert-api src/routes/auth.js POST /login 校验并签发 JWT（JWT_SECRET）\n4. 前端保存 token，后续请求携带鉴权头\n5. 续期可走 POST /refresh，但 web 端未见调用\n涉及工程：ohpert-web、ohpert-api\n\n#### 订单列表与详情\n1. ohpert-web src/api/order.js GET /orders/list\n2. ohpert-api src/routes/order.js GET /list 鉴权后返回列表\n3. 详情走 GET /orders/${id} → GET /:id\n涉及工程：ohpert-web、ohpert-api\n\n#### 下单与取消\n1. ohpert-web POST /orders 创建订单\n2. ohpert-api POST / 落库\n3. 取消走 POST /orders/${id}/cancel → POST /:id/cancel\n涉及工程：ohpert-web、ohpert-api\n\n#### 用户资料维护\n1. ohpert-web GET /user/profile → api GET /profile\n2. 修改走 PUT /user/profile → api PUT /profile\n涉及工程：ohpert-web、ohpert-api",
+    "domains": [
+      {
+        "name": "认证与鉴权",
+        "description": "登录、注册、Token 刷新；api 端 /login /register /refresh，web 端 /auth/login /auth/register",
+        "repos": ["demo-ohpert-api", "demo-ohpert-web"]
+      },
+      {
+        "name": "订单",
+        "description": "订单列表、详情、创建、取消；api 端 order 路由，web 端 src/api/order.js 封装调用",
+        "repos": ["demo-ohpert-api", "demo-ohpert-web"]
+      },
+      {
+        "name": "用户资料",
+        "description": "用户 profile 读写；api 端 user 路由，web 端 src/api/user.js",
+        "repos": ["demo-ohpert-api", "demo-ohpert-web"]
+      },
+      {
+        "name": "管理后台",
+        "description": "用户列表与审计日志查询（后端接口尚未对齐）",
+        "repos": ["demo-ohpert-admin"]
+      }
+    ],
+    "links": [
+      {
+        "id": "http:demo-ohpert-web->demo-ohpert-api",
+        "from": "demo-ohpert-web",
+        "to": "demo-ohpert-api",
+        "kind": "http-api",
+        "strength": 100,
+        "summary": "ohpert-web 通过 7 个接口调用 ohpert-api（POST /api/orders/:id/cancel、POST /api/auth/login、POST /api/auth/register、GET /api/orders/list 等）",
+        "evidence": [
+          {
+            "file": "src/api/auth.js:4",
+            "detail": "前端 POST /auth/login → 后端 src/routes/auth.js:6 POST /api/auth/login"
+          },
+          {
+            "file": "src/api/auth.js:8",
+            "detail": "前端 POST /auth/register → 后端 src/routes/auth.js:16 POST /api/auth/register"
+          },
+          {
+            "file": "src/api/order.js:4",
+            "detail": "前端 GET /orders/list → 后端 src/routes/order.js:7 GET /api/orders/list"
+          },
+          {
+            "file": "src/api/order.js:8",
+            "detail": "前端 GET /orders/${id} → 后端 src/routes/order.js:12 GET /api/orders/:id"
+          },
+          {
+            "file": "src/api/order.js:12",
+            "detail": "前端 POST /orders → 后端 src/routes/order.js:17 POST /api/orders/"
+          },
+          {
+            "file": "src/api/order.js:16",
+            "detail": "前端 POST /orders/${id}/cancel → 后端 src/routes/order.js:22 POST /api/orders/:id/cancel"
+          },
+          {
+            "file": "src/api/user.js:4",
+            "detail": "前端 GET /user/profile → 后端 src/routes/user.js:7 GET /api/user/profile"
+          }
+        ],
+        "endpoints": [
+          {
+            "method": "POST",
+            "path": "/api/orders/:id/cancel",
+            "backendFile": "src/routes/order.js:22",
+            "frontendFiles": ["src/api/order.js:16"]
+          },
+          {
+            "method": "POST",
+            "path": "/api/auth/login",
+            "backendFile": "src/routes/auth.js:6",
+            "frontendFiles": ["src/api/auth.js:4"]
+          },
+          {
+            "method": "POST",
+            "path": "/api/auth/register",
+            "backendFile": "src/routes/auth.js:16",
+            "frontendFiles": ["src/api/auth.js:8"]
+          },
+          {
+            "method": "GET",
+            "path": "/api/orders/list",
+            "backendFile": "src/routes/order.js:7",
+            "frontendFiles": ["src/api/order.js:4"]
+          },
+          {
+            "method": "GET",
+            "path": "/api/orders/:id",
+            "backendFile": "src/routes/order.js:12",
+            "frontendFiles": ["src/api/order.js:8"]
+          },
+          {
+            "method": "GET",
+            "path": "/api/user/profile",
+            "backendFile": "src/routes/user.js:7",
+            "frontendFiles": ["src/api/user.js:4"]
+          },
+          {
+            "method": "POST",
+            "path": "/api/orders/",
+            "backendFile": "src/routes/order.js:17",
+            "frontendFiles": ["src/api/order.js:12"]
+          }
+        ]
+      },
+      {
+        "id": "http:demo-ohpert-admin->demo-ohpert-api",
+        "from": "demo-ohpert-admin",
+        "to": "demo-ohpert-api",
+        "kind": "http-api",
+        "strength": 53,
+        "summary": "ohpert-admin 通过 1 个接口调用 ohpert-api（GET /api/orders/list）",
+        "evidence": [
+          {
+            "file": "src/api/client.js:6",
+            "detail": "前端 GET /user/list → 后端 src/routes/order.js:7 GET /api/orders/list"
+          }
+        ],
+        "endpoints": [
+          {
+            "method": "GET",
+            "path": "/api/orders/list",
+            "backendFile": "src/routes/order.js:7",
+            "frontendFiles": ["src/api/client.js:6"]
+          }
+        ]
+      },
+      {
+        "id": "domain:demo-ohpert-web<->demo-ohpert-admin",
+        "from": "demo-ohpert-web",
+        "to": "demo-ohpert-admin",
+        "kind": "same-domain",
+        "strength": 35,
+        "summary": "两工程共享相近的目录/业务域命名（src/api）；两前端共享 src/api / src/views 目录约定，但技术栈不同（Vue vs React），无代码复用",
+        "evidence": [
+          {
+            "file": "src/api",
+            "detail": "目录结构相似"
+          }
+        ]
+      },
+      {
+        "id": "llm:0:demo-ohpert-web->demo-ohpert-api",
+        "from": "demo-ohpert-web",
+        "to": "demo-ohpert-api",
+        "kind": "data-model",
+        "strength": 35,
+        "summary": "web 端 8 个 Axios 调用点与 api 端 9 条路由对应同一套订单/用户/认证业务数据，接口契约靠路径人工对齐",
+        "evidence": []
+      },
+      {
+        "id": "llm:1:demo-ohpert-admin->demo-ohpert-api",
+        "from": "demo-ohpert-admin",
+        "to": "demo-ohpert-api",
+        "kind": "same-domain",
+        "strength": 35,
+        "summary": "admin 端调用 GET /user/list、GET /admin/audit-logs，意图指向同一后端的用户与审计数据，但 api 路由清单中无对应实现",
+        "evidence": []
+      }
+    ],
+    "warnings": [
+      "接口路径前缀不一致：ohpert-web 调用 /auth/login、/orders/list 等（带模块前缀），ohpert-api 暴露的是 /login、/list（无前缀），需确认 api 是否有 /auth、/orders 路由挂载前缀，否则登录链路直接 404",
+      "ohpert-admin 的 GET /user/list 与 GET /admin/audit-logs 在 ohpert-api 中无对应路由，管理端功能悬空，存在契约缺口",
+      "ohpert-api 环境变量只有 JWT_SECRET、PORT，ohpert-web 有 VITE_API_BASE，ohpert-admin 声明无任何环境变量却发起 HTTP 调用，其 API base 地址来源不明（可能硬编码），环境差异下会指向错误地址",
+      "未发现 CORS 配置证据（api 的 2 个 middleware 文件用途未扫描确认），若 api 未开启 CORS，两个前端跨域调用会被浏览器拦截",
+      "三工程均为纯 JavaScript 且无共享类型/模型定义，请求与响应结构靠口头/文档对齐，极易出现字段不一致，建议引入 OpenAPI 或共享类型包",
+      "api 端 POST /refresh 未被任何前端调用，Token 续期链路未闭环",
+      "各工程包管理器均标记 n/a 且构建脚本为自定义 build-check.mjs，缺少 lockfile 与真实构建验证，集成风险较高",
+      "静态扫描给出的 admin→api GET /api/orders/list 关联在 admin 代码事实（仅 2 个调用点）中未体现，疑似误报，采纳时应人工复核"
+    ],
+    "techSummary": "Express 后端 + Vue/Vite C 端前端 + React/Ant Design 管理端，纯 JavaScript 无类型系统，以 JWT 为鉴权核心的前后端分离三工程组合。"
+  },
+  "requirements": [
+    {
+      "id": "req_99b63ca390b6",
+      "seq": 1,
+      "title": "订单批量取消",
+      "description": "用户可以在订单列表页面勾选多个待支付订单，一次性批量取消。后端提供 POST /api/orders/batch-cancel 接口接收订单 id 数组，进行权限校验与状态校验后批量取消，返回成功与失败明细。前端订单列表增加多选框、全选和「批量取消」按钮，调用新接口并刷新列表。",
+      "priority": "high",
+      "status": "needs_rework",
+      "createdAt": "2026-10-27T02:02:21.806Z",
+      "updatedAt": "2026-10-27T02:13:01.562Z",
+      "queuedAt": "2026-10-27T02:02:21.807Z",
+      "analyzedAt": "2026-10-27T02:02:51.268Z",
+      "implementedAt": "2026-10-27T02:05:07.560Z",
+      "completedAt": "2026-10-27T02:12:43.155Z",
+      "report": {
+        "summary": "前端订单列表支持多选待支付订单并一键批量取消，后端新增 POST /api/orders/batch-cancel 接口，完成权限与状态校验后批量取消订单，返回成功与失败明细，前端据结果刷新列表。",
+        "background": "当前订单取消只能逐单操作（POST /orders/:id/cancel），用户若有多个待支付订单需多次点击，效率低。本次提供批量取消能力，减少重复操作，提升订单管理体验，并保持与现有单笔取消一致的权限与状态约束。",
+        "goals": [
+          "ohpert-api 提供批量取消接口，仅允许取消本人待支付订单",
+          "ohpert-web 订单列表支持勾选、全选待支付订单并批量取消",
+          "批量取消后展示成功/失败明细并刷新列表"
+        ],
+        "acceptanceCriteria": [
+          "选中多个待支付订单点击批量取消，全部可取消时列表刷新且订单状态变为已取消",
+          "请求中包含非本人订单时，该订单进入失败明细且不影响其他订单",
+          "请求中包含非待支付状态的订单时，该订单进入失败明细（原因含状态不符）",
+          "未登录或 token 无效时接口返回 401，前端不刷新列表",
+          "未勾选任何订单时批量取消按钮不可用"
+        ],
+        "impact": [
+          {
+            "repoId": "demo-ohpert-api",
+            "repoName": "ohpert-api",
+            "role": "unknown",
+            "level": "high",
+            "reason": "需在订单路由新增批量取消接口，复用现有鉴权中间件与订单服务/模型的取消与状态校验逻辑",
+            "areas": ["订单路由", "订单服务", "订单模型", "鉴权中间件"],
+            "files": [
+              "samples/ohpert-api/src/routes/order.js",
+              "samples/ohpert-api/src/services",
+              "samples/ohpert-api/src/models",
+              "samples/ohpert-api/src/middleware"
+            ]
+          },
+          {
+            "repoId": "demo-ohpert-web",
+            "repoName": "ohpert-web",
+            "role": "unknown",
+            "level": "high",
+            "reason": "订单列表页需增加多选框、全选与批量取消按钮，并在 src/api/order.js 新增批量取消接口封装",
+            "areas": ["订单列表页面", "订单 API 封装"],
+            "files": ["samples/ohpert-web/src/api/order.js", "samples/ohpert-web/src/views"]
+          }
+        ],
+        "apiChanges": [
+          {
+            "method": "POST",
+            "path": "/api/orders/batch-cancel",
+            "description": "新增：接收 { ids: string[] }，逐单校验归属与待支付状态，执行批量取消，返回 { success: [{id}], failed: [{id, reason}] }",
+            "repo": "ohpert-api",
+            "kind": "new"
+          },
+          {
+            "method": "POST",
+            "path": "/api/orders/:id/cancel",
+            "description": "不变更：批量取消可复用其单笔取消的服务逻辑；如抽取公共取消函数，则本路由内部实现可能微调但契约不变",
+            "repo": "ohpert-api",
+            "kind": "modified"
+          }
+        ],
+        "dataModelChanges": [],
+        "frontendScope": [
+          "在 src/api/order.js 新增 batchCancelOrders(ids) 封装，调用 POST /orders/batch-cancel",
+          "订单列表视图增加每行多选框（仅待支付订单可选）、全选（仅选中当前可选行）",
+          "增加「批量取消」按钮，未勾选时禁用，点击前二次确认",
+          "调用成功后按返回的成功/失败明细提示（如失败原因），并重新调用 GET /orders/list 刷新列表",
+          "处理 401/网络异常等错误分支，避免部分失败时误导用户"
+        ],
+        "backendScope": [
+          "在 src/routes/order.js 新增 POST /batch-cancel 路由，挂载鉴权中间件",
+          "在订单 service 中实现批量取消：校验 ids 数组非空、逐单校验归属与待支付状态，逐单取消并收集成功/失败明细",
+          "明确响应结构 { success: [{id}], failed: [{id, reason}] }，失败原因区分「无权限」与「状态不符」（注意不泄露他人订单信息）",
+          "复用或抽取单笔取消 POST /:id/cancel 的核心逻辑，保证行为一致",
+          "补充 scripts/build-check.mjs 可通过的构建校验；如无测试框架则保持现状并在验收清单中人工验证"
+        ],
+        "risks": [
+          "逐单事务性不确定：项目体量小、无共享类型与事务封装，批量取消可能出现部分成功。缓解：接口按单笔粒度返回成功/失败明细，前端如实展示，不做整批回滚承诺",
+          "越权风险：需确保每个 id 都校验归属用户，避免批量接口成为水平越权入口。缓解：复用现有鉴权中间件 + 逐单归属校验",
+          "大量 ids 导致性能问题：限制单次请求 ids 数量（建议上限如 50，待确认）",
+          "接口契约人工对齐易漂移：web 与 api 无共享类型。缓解：在 README 或注释中固化请求/响应结构"
+        ],
+        "testPlan": [
+          "build: 两工程分别执行 node scripts/build-check.mjs 通过",
+          "后端：登录后调用 POST /api/orders/batch-cancel，传入多个本人待支付订单 id，验证全部成功且状态变更",
+          "后端：传入他人订单 id 与已取消订单 id，验证进入 failed 明细且不影响其他订单",
+          "后端：不携带 token 调用，验证 401；ids 为空数组验证参数校验错误",
+          "前端：列表勾选、全选、批量取消按钮禁用态、取消后列表刷新与提示文案正确",
+          "前端：部分失败场景提示明细正确，成功订单状态刷新为已取消"
+        ],
+        "estimates": [
+          {
+            "repoId": "demo-ohpert-api",
+            "repoName": "ohpert-api",
+            "files": 3,
+            "points": 3,
+            "note": "主要改动 routes/order.js 与订单 service，复用现有鉴权与取消逻辑"
+          },
+          {
+            "repoId": "demo-ohpert-web",
+            "repoName": "ohpert-web",
+            "files": 2,
+            "points": 3,
+            "note": "api 封装 + 列表页多选/全选/按钮与结果提示"
+          }
+        ],
+        "assumptions": [
+          "订单状态枚举中存在「待支付」状态，且单笔取消 POST /:id/cancel 已有状态校验逻辑可复用（具体枚举值需查看 src/models 后确认）",
+          "src/middleware 中含 JWT 鉴权中间件，可直接挂载到新路由",
+          "前端视图文件位于 src/views 下（具体订单列表页文件名扫描未列出，需定位）",
+          "ohpert-admin 关联说明提到调用 GET /api/orders/list，但静态扫描其 API 调用仅含 user/list 与 audit-logs，且关键词命中 0 分，判定本次批量取消不涉及管理端",
+          "批量取消不要求原子性（整批回滚），按单笔粒度返回明细即可"
+        ],
+        "outOfScope": [
+          "ohpert-admin 侧的订单批量操作",
+          "批量创建、批量支付等其他批量能力",
+          "订单数据模型/表结构变更",
+          "ohpert-api 中尚未实现的 GET /user/list、GET /admin/audit-logs 管理端接口对齐"
+        ],
+        "generatedAt": "2026-10-27T02:02:51.267Z",
+        "aiModel": "gpt-4o-mini",
+        "latencyMs": 29458
+      },
+      "implementation": null,
+      "acceptance": null,
+      "userConfirmation": {
+        "confirmedAt": "2026-10-27T02:12:43.155Z",
+        "note": "已验证：批量取消功能可用",
+        "decision": "approve"
+      },
+      "reworkRounds": 0,
+      "feedback": [
+        {
+          "at": "2026-10-27T02:12:43.155Z",
+          "content": "已验证：批量取消功能可用",
+          "by": "user"
+        },
+        {
+          "at": "2026-10-27T02:13:01.561Z",
+          "content": "用户回滚了代码改动",
+          "by": "user"
+        }
+      ],
+      "jobId": null,
+      "error": null,
+      "targetRepos": []
+    },
+    {
+      "id": "req_fff63db8d69e",
+      "seq": 2,
+      "title": "订单详情展示下单备注",
+      "description": "订单详情接口 GET /api/orders/:id 需要在返回中带上备注字段 remark（下单时写入，可为空字符串）。前端订单详情页需要在金额下方展示「备注：xxx」，为空时显示「无」。",
+      "priority": "normal",
+      "status": "completed",
+      "createdAt": "2026-10-27T02:13:26.507Z",
+      "updatedAt": "2026-10-27T02:24:08.631Z",
+      "queuedAt": "2026-10-27T02:13:26.507Z",
+      "analyzedAt": "2026-10-27T02:13:35.701Z",
+      "implementedAt": "2026-10-27T02:22:33.499Z",
+      "completedAt": "2026-10-27T02:24:08.631Z",
+      "report": {
+        "summary": "在 ohpert-api 的订单详情接口 GET /api/orders/:id 返回体中加入 remark 字段，并在 ohpert-web 订单详情页金额下方展示「备注：xxx」，为空时显示「无」。",
+        "background": "下单时已写入备注但详情接口未返回，导致用户无法回看自己的下单诉求。补齐 remark 字段可提升订单信息透明度、减少客服追问，同时保持与创建订单接口的数据契约一致。",
+        "goals": [
+          "订单详情接口 GET /api/orders/:id 返回体包含 remark 字段（可为空字符串）",
+          "ohpert-web 订单详情页在金额下方稳定展示备注，空值回退为「无」",
+          "不改变现有详情接口其它字段与鉴权行为"
+        ],
+        "acceptanceCriteria": [
+          "调用 GET /api/orders/{id} 且该订单有备注时，响应 JSON 中 remark 为原始备注字符串",
+          "调用 GET /api/orders/{id} 且该订单无备注（或字段缺失）时，响应 JSON 中 remark 为空字符串 \"\"",
+          "ohpert-web 订单详情页备注非空时显示「备注：<内容>」，空字符串/undefined 时显示「备注：无」",
+          "备注展示位置位于金额下方，与现有页面样式一致",
+          "异常分支（订单不存在/无权限）行为与改动前一致"
+        ],
+        "impact": [
+          {
+            "repoId": "demo-ohpert-api",
+            "repoName": "ohpert-api",
+            "role": "backend",
+            "level": "high",
+            "reason": "详情接口 GET /:id 需要返回 remark 字段，涉及路由层返回体与模型/服务层字段读取映射。",
+            "areas": ["订单路由 GET /:id", "订单服务", "订单模型字段"],
+            "files": [
+              "samples/ohpert-api/src/routes/order.js",
+              "samples/ohpert-api/src/services",
+              "samples/ohpert-api/src/models"
+            ]
+          },
+          {
+            "repoId": "demo-ohpert-web",
+            "repoName": "ohpert-web",
+            "role": "frontend",
+            "level": "medium",
+            "reason": "订单详情页需要在金额下方新增备注展示并处理空值回退；详情数据经 src/api/order.js 获取，若页面做了字段裁剪需同步透传 remark。",
+            "areas": ["订单详情页", "订单 API 封装"],
+            "files": ["samples/ohpert-web/src/views", "samples/ohpert-web/src/api/order.js"]
+          }
+        ],
+        "apiChanges": [
+          {
+            "method": "GET",
+            "path": "/api/orders/:id",
+            "description": "响应体新增 remark 字段（string，可为空字符串），取值来自下单时写入的备注；其它字段与鉴权不变。",
+            "repo": "ohpert-api",
+            "kind": "modified"
+          }
+        ],
+        "dataModelChanges": [
+          "订单模型对外暴露 remark 字段（string，默认空字符串），需确认持久化层已存储该字段，缺失时以 \"\" 兜底返回"
+        ],
+        "frontendScope": [
+          "在 ohpert-web 订单详情页金额展示块下方新增备注行，文案为「备注：{remark || '无'}」",
+          "核对 src/api/order.js 中 GET /orders/${id} 的返回是否原样透传 remark，如做了字段映射需补上 remark",
+          "处理 remark 为 null/undefined/空字符串三种情况的统一回退展示",
+          "保证备注内容较长时的换行/省略样式不与金额区域布局冲突"
+        ],
+        "backendScope": [
+          "在 ohpert-api src/routes/order.js 的 GET /:id 处理链路中，将订单的 remark 字段加入返回体",
+          "在 services/models 层确认读取 remark 字段，若数据库无该列或历史数据为空，统一返回空字符串而非 null/undefined",
+          "保持 GET /list 等其它接口行为不变，避免破坏现有前端契约"
+        ],
+        "risks": [
+          "历史订单无 remark 数据，若直接返回 undefined 会导致前端显示异常，需后端统一兜底为空字符串",
+          "详情接口若使用白名单字段裁剪，新增 remark 容易被漏掉，需在返回构造处显式声明",
+          "若下单接口 POST /orders 实际未落库 remark，本需求会出现「永远显示无」，需与创建链路确认字段已写入",
+          "前后端接口契约无共享类型，存在字段名不一致（remark vs remarks）风险，需在联调时对齐"
+        ],
+        "testPlan": [
+          "使用已有备注订单调用 GET /api/orders/{id}，断言响应含 remark 且值正确",
+          "使用无备注订单调用详情接口，断言 remark 为 \"\"",
+          "调用不存在/无权限订单，验证错误码与提示与改动前一致",
+          "前端打开有备注订单详情页，确认金额下方展示「备注：xxx」",
+          "前端打开无备注订单详情页，确认展示「备注：无」",
+          "回归订单列表、创建、取消接口，确认响应结构未被破坏",
+          "执行 ohpert-api 与 ohpert-web 的 build 脚本校验通过"
+        ],
+        "estimates": [
+          {
+            "repoId": "demo-ohpert-api",
+            "repoName": "ohpert-api",
+            "files": 2,
+            "points": 2,
+            "note": "路由返回体加字段并做空值兜底，改动集中"
+          },
+          {
+            "repoId": "demo-ohpert-web",
+            "repoName": "ohpert-web",
+            "files": 2,
+            "points": 2,
+            "note": "详情页新增一行展示与空值回退，样式微调"
+          }
+        ],
+        "assumptions": [
+          "下单时 remark 已持久化在订单模型中，本次仅需在详情接口暴露",
+          "前端调用路径映射为 /api/orders/:id（经 VITE_API_BASE 拼接），后端实际路由为 /:id",
+          "详情页视图文件位于 ohpert-web src/views 目录下的订单相关视图，具体文件名待确认"
+        ],
+        "outOfScope": [
+          "订单列表接口返回 remark",
+          "下单/编辑订单时新增或修改备注的能力",
+          "管理端 ohpert-admin 展示订单备注（当前无订单详情页面）",
+          "备注字段的长度限制、敏感词过滤等校验规则"
+        ],
+        "generatedAt": "2026-10-27T02:13:35.701Z",
+        "aiModel": "gpt-4o-mini",
+        "latencyMs": 9193
+      },
+      "implementation": {
+        "startedAt": "2026-10-27T02:22:03.533Z",
+        "finishedAt": "2026-10-27T02:22:33.497Z",
+        "status": "succeeded",
+        "repos": [
+          {
+            "repoId": "demo-ohpert-api",
+            "branch": "ohpert/req-2-repo",
+            "baseBranch": "main",
+            "baseRev": "50aafc1da8e6d41236906fd8a87d6fde0bbc5fdb",
+            "headAfter": "b23d3b59e543fd4b07e80ea3e59f785888e14d82"
+          },
+          {
+            "repoId": "demo-ohpert-web",
+            "branch": "ohpert/req-2-repo",
+            "baseBranch": "main",
+            "baseRev": "5fa43646425af352600336809904d6f76c415625",
+            "headAfter": "d41533b4d2353253fdd6ed7fe1d1ed4b21532682"
+          }
+        ],
+        "files": [
+          {
+            "repoId": "demo-ohpert-api",
+            "repoName": "ohpert-api",
+            "file": "src/models/order.model.js",
+            "kind": "modified",
+            "additions": 7,
+            "deletions": 1,
+            "source": "ai",
+            "patch": "diff --git a/src/models/order.model.js b/src/models/order.model.js\nindex 31caef8..03654b1 100644\n--- a/src/models/order.model.js\n+++ b/src/models/order.model.js\n@@ -1,13 +1,19 @@\n const rows = new Map();\n let seq = 1000;\n \n+// 备注归一化：null/undefined/纯空白统一收敛为空字符串\n+export function normalizeRemark(value) {\n+  if (typeof value !== 'string') return '';\n+  return value.trim();\n+}\n+\n export const Order = {\n   create({ userId, items, remark, status }) {\n     const order = {\n       id: String(seq++),\n       userId,\n       items,\n-      remark: remark || '',\n+      remark: normalizeRemark(remark),\n       status,\n       totalAmount: items.reduce((sum, it) => sum + it.price * it.qty, 0),\n       createdAt: new Date().toISOString(),"
+          },
+          {
+            "repoId": "demo-ohpert-api",
+            "repoName": "ohpert-api",
+            "file": "src/services/order.service.js",
+            "kind": "modified",
+            "additions": 3,
+            "deletions": 2,
+            "source": "ai",
+            "patch": "diff --git a/src/services/order.service.js b/src/services/order.service.js\nindex 8e89156..5c77266 100644\n--- a/src/services/order.service.js\n+++ b/src/services/order.service.js\n@@ -1,4 +1,4 @@\n-import { Order } from '../models/order.model.js';\n+import { Order, normalizeRemark } from '../models/order.model.js';\n \n export async function listOrders(userId, { status, page }) {\n   const rows = Order.byUser(userId).filter((o) => !status || o.status === status);\n@@ -8,7 +8,8 @@ export async function listOrders(userId, { status, page }) {\n export async function getOrderDetail(id) {\n   const order = Order.findById(id);\n   if (!order) throw Object.assign(new Error('订单不存在'), { status: 404 });\n-  return order;\n+  // remark 为下单时写入的备注：缺失/null/纯空白统一返回空字符串\n+  return { ...order, remark: normalizeRemark(order.remark) };\n }\n \n export async function createOrder(userId, payload) {\n"
+          },
+          {
+            "repoId": "demo-ohpert-web",
+            "repoName": "ohpert-web",
+            "file": "src/views/OrderDetail.vue",
+            "kind": "modified",
+            "additions": 16,
+            "deletions": 1,
+            "source": "ai",
+            "patch": "diff --git a/src/views/OrderDetail.vue b/src/views/OrderDetail.vue\nindex 05eddf7..c3f92a4 100644\n--- a/src/views/OrderDetail.vue\n+++ b/src/views/OrderDetail.vue\n@@ -3,18 +3,26 @@\n     <h2>订单详情</h2>\n     <p>状态：{{ order.status }}</p>\n     <p>金额：¥{{ order.totalAmount }}</p>\n+    <p class=\"order-remark\">备注：{{ remarkText }}</p>\n     <button v-if=\"order.status === 'pending'\" @click=\"onCancel\">取消订单</button>\n   </div>\n </template>\n \n <script setup>\n-import { onMounted, ref } from 'vue';\n+import { computed, onMounted, ref } from 'vue';\n import { useRoute } from 'vue-router';\n import { fetchOrderDetail, cancelOrder } from '../api/order.js';\n \n const route = useRoute();\n const order = ref({});\n \n+// remark 缺失 / null / 空字符串 / 纯空白 统一回退为「无」\n+const remarkText = computed(() => {\n+  const remark = order.value?.remark;\n+  if (typeof remark !== 'string') return '无';\n+  return remark.trim() || '无';\n+});\n+\n async function load() {\n   const res = await fetchOrderDetail(route.params.id);\n   order.value = res.data;\n@@ -27,3 +35,10 @@ async function onCancel() {\n \n onMounted(load);\n </script>\n+\n+<style scoped>\n+.order-remark {\n+  word-break: break-all;\n+  white-space: pre-wrap;\n+}\n+</style>\n"
+          }
+        ],
+        "diffStat": {
+          "files": 3,
+          "additions": 26,
+          "deletions": 4
+        },
+        "summary": "验证结果符合预期：有备注时返回原备注字符串（已去除首尾空白），纯空白、未传备注时返回空字符串，订单不存在仍抛出 404。\n\n## 改动总结\n\n### ohpert-api（后端）\n1. **`src/models/order.model.js`**\n   - 新增导出工具函数 `normalizeRemark(value)`：非字符串（null/undefined 等）返回 `''`，字符串则 `trim()` 后返回。\n   - `Order.create` 中的 `remark` 由 `remark || ''` 改为 `normalizeRemark(remark)`，从写入源头就消除纯空白备注（如 `\"   \"`）。\n2. **`src/services/order.service.js`**\n   - 引入 `normalizeRemark`。\n   - `getOrderDetail` 返回体改为 `{ ...order, remark: normalizeRemark(order.remark) }`，保证详情接口 `remark` 恒为字符串：有备注返回去除首尾空白的原文本；缺失/null/纯空白返回 `\"\"`。订单不存在仍抛 404，鉴权与其它字段均未改动。\n3. **`src/routes/order.js`**：无需修改 —— `GET /:id` 原样透传 service 返回对象，已自动携带 `remark`；`GET /list` 等其它接口未受影响。\n\n### ohpert-web（前端）\n1. **`src/views/OrderDetail.vue`**\n   - 在「金额」下方新增 `<p class=\"order-remark\">备注：{{ remarkText }}</p>`。\n   - 新增 computed `remarkText`：非字符串（undefined/null）→「无」；字符串 `trim()` 后为空 →「无」；否则展示原备注（同时兼容纯空白字符串的历史反馈要求）。\n   - 新增 `scoped` 样式 `word-break: break-all; white-space: pre-wrap;`，保证长备注换行不挤压/破坏金额区域布局。\n2. **`src/api/order.js`**：核对后无需改动 —— `fetchOrderDetail` 直接透传后端响应，`request.js` 响应拦截器只取 `res.data`（即 `{ code, data }`），页面通过 `res.data` 拿到订单对象，`remark` 原样可达。\n\n### 验证\n- `ohpert-api`: `npm run build` → `build ok (11 files checked)`\n- `ohpert-web`: `npm run build` → `build ok (6 files checked)`\n- 补充运行 node 脚本直接调用 service 验证：`\"  请尽快发货  \"` → `\"请尽快发货\"`；`\"   \"` → `\"\"`；未传 remark → `\"\"`；不存在订单 → `404 订单不存在`。",
+        "commands": [],
+        "aiModel": "gpt-4o-mini",
+        "turns": 13
+      },
+      "acceptance": {
+        "verdict": "pass_with_notes",
+        "score": 88,
+        "summary": "后端在模型与服务层对 remark 做了归一化并在详情接口透传，前端在金额下方新增备注展示且空值回退为「无」，三条核心验收标准均有实现且构建通过。主要缺口：无法确认路由层是否原样透传服务层对象、备注被 trim 改变了原始字符串语义、以及缺少针对该字段的自动化测试。",
+        "checks": [
+          {
+            "id": "changes",
+            "title": "存在实际代码改动",
+            "status": "pass",
+            "detail": "共 3 个文件变更（+26 / -4）",
+            "evidence": [
+              "ohpert-api:src/models/order.model.js (modified)",
+              "ohpert-api:src/services/order.service.js (modified)",
+              "ohpert-web:src/views/OrderDetail.vue (modified)"
+            ]
+          },
+          {
+            "id": "committed",
+            "title": "改动已纳入版本控制（可回滚）",
+            "status": "pass",
+            "detail": "所有改动已提交到平台分支，可随时一键回滚"
+          },
+          {
+            "id": "cleanliness",
+            "title": "无冲突标记/占位代码",
+            "status": "pass",
+            "detail": "未发现冲突标记或占位实现"
+          },
+          {
+            "id": "build:demo-ohpert-api",
+            "title": "ohpert-api build",
+            "status": "pass",
+            "command": "npm run build",
+            "detail": "`npm run build` 执行成功",
+            "evidence": ["> ohpert-api@1.0.0 build\n> node scripts/build-check.mjs\n\nbuild ok (11 files checked)"]
+          },
+          {
+            "id": "build:demo-ohpert-web",
+            "title": "ohpert-web build",
+            "status": "pass",
+            "command": "npm run build",
+            "detail": "`npm run build` 执行成功",
+            "evidence": ["> ohpert-web@1.0.0 build\n> node scripts/build-check.mjs\n\nbuild ok (6 files checked)"]
+          },
+          {
+            "id": "api-contract",
+            "title": "接口变更与代码一致",
+            "status": "pass",
+            "detail": "报告中声明的 1 个接口均在代码改动中出现",
+            "evidence": ["匹配到的实现: GET /api/orders/:id"]
+          },
+          {
+            "id": "ai-0",
+            "title": "验收标准1：有备注时返回原始备注字符串",
+            "status": "warn",
+            "detail": "getOrderDetail 返回 { ...order, remark: normalizeRemark(order.remark) }，remark 为非字符串时返回 ''，为字符串时返回 value.trim()。对有内容的备注能正确返回；但 normalizeRemark 会 trim，若下单备注含首尾空格，返回值与「原始备注字符串」不完全一致。另外路由层文件 src/routes/order.js 未出现在改动中，需确认 GET /:id 直接透传 service 返回值而未被二次裁剪。",
+            "evidence": [
+              "ohpert-api:src/services/order.service.js:11",
+              "ohpert-api:src/models/order.model.js:4-7",
+              "ohpert-api:src/routes/order.js:12 (未改动，需人工确认透传)"
+            ]
+          },
+          {
+            "id": "ai-1",
+            "title": "验收标准2：无备注或字段缺失时返回空字符串",
+            "status": "pass",
+            "detail": "normalizeRemark 对非字符串（null/undefined/数字等）与纯空白字符串均返回 ''，服务层在返回前强制归一化，满足无备注返回 \"\" 的要求。",
+            "evidence": ["ohpert-api:src/models/order.model.js:4-7", "ohpert-api:src/services/order.service.js:12"]
+          },
+          {
+            "id": "ai-2",
+            "title": "验收标准3：前端备注非空显示「备注：<内容>」，空值显示「备注：无」",
+            "status": "pass",
+            "detail": "remarkText 计算属性：非字符串返回 '无'，字符串 trim 后为空返回 '无'，否则返回原文。模板固定渲染「备注：{{ remarkText }}」，覆盖空字符串/undefined/null/纯空白场景。",
+            "evidence": ["ohpert-web:src/views/OrderDetail.vue:17-21", "ohpert-web:src/views/OrderDetail.vue:6"]
+          },
+          {
+            "id": "ai-3",
+            "title": "验收标准4：备注展示位于金额下方且样式一致",
+            "status": "pass",
+            "detail": "备注 <p> 紧跟在金额 <p> 之后、取消按钮之前，DOM 顺序满足「金额下方」。使用 scoped style 仅增加 word-break/white-space，未覆盖字体、间距、颜色等既有样式，与页面现有 <p> 展示方式一致。",
+            "evidence": ["ohpert-web:src/views/OrderDetail.vue:4-7", "ohpert-web:src/views/OrderDetail.vue:38-43"]
+          },
+          {
+            "id": "ai-4",
+            "title": "验收标准5：异常分支行为与改动前一致",
+            "status": "pass",
+            "detail": "getOrderDetail 中订单不存在仍抛 404（'订单不存在'），异常路径在归一化之前，未被改动影响。cancelOrder 的 403/400 分支未改动。前端 load 未加入新的错误处理分支，异常行为沿用改动前逻辑。",
+            "evidence": [
+              "ohpert-api:src/services/order.service.js:10",
+              "ohpert-api:src/services/order.service.js:20-23",
+              "ohpert-web:src/views/OrderDetail.vue:28-31"
+            ]
+          },
+          {
+            "id": "ai-5",
+            "title": "后端实现完整性",
+            "status": "pass",
+            "detail": "模型层写入时使用 normalizeRemark，服务层读取时再次归一化，createOrder 已把 payload.remark 传入 Order.create，链路完整。但归一化函数被放在 model 中，被 service 反向引用，分层上略耦合。",
+            "evidence": [
+              "ohpert-api:src/models/order.model.js:7",
+              "ohpert-api:src/models/order.model.js:14",
+              "ohpert-api:src/services/order.service.js:1",
+              "ohpert-api:src/services/order.service.js:17"
+            ]
+          },
+          {
+            "id": "ai-6",
+            "title": "前端实现一致性",
+            "status": "pass",
+            "detail": "前端直接使用 order.value.remark，未做字段裁剪，api/order.js 未被改动、fetchOrderDetail 原样返回后端数据。若后端确实已透传 remark，则前端可正确消费。",
+            "evidence": ["ohpert-web:src/views/OrderDetail.vue:19", "ohpert-web:src/api/order.js:8 (未改动)"]
+          },
+          {
+            "id": "ai-7",
+            "title": "接口契约前后端一致",
+            "status": "pass",
+            "detail": "接口变更声明 GET /api/orders/:id 新增 remark（string，可为空字符串），后端返回归一化后的 string，前端按 string 消费并在非字符串时回退，前后端契约一致。",
+            "evidence": ["ohpert-api:src/services/order.service.js:12", "ohpert-web:src/views/OrderDetail.vue:17-21"]
+          },
+          {
+            "id": "ai-8",
+            "title": "测试覆盖",
+            "status": "warn",
+            "detail": "本次改动无任何自动化测试新增或更新；工程内仅有 build-check 脚本，无单元/接口测试。备注归一化与前端空值回退均无回归保护。需求未强制要求测试，按规则记为 warn。",
+            "evidence": [
+              "ohpert-api:package.json build/start 脚本",
+              "ohpert-web:package.json build/dev 脚本",
+              "代码改动中无 *.test.* / *.spec.* 文件"
+            ]
+          }
+        ],
+        "perRepo": [
+          {
+            "repoId": "demo-ohpert-api",
+            "repoName": "ohpert-api",
+            "verdict": "需关注",
+            "notes": "服务层与模型层已实现 remark 归一化并透传，异常分支未变。需人工确认 src/routes/order.js 的 GET /:id 是否原样返回 service 结果、未做字段白名单裁剪；normalizeRemark 的 trim 会改变带首尾空格的原始备注，需与需求方对齐「原始备注」语义。"
+          },
+          {
+            "repoId": "demo-ohpert-web",
+            "repoName": "ohpert-web",
+            "verdict": "通过",
+            "notes": "OrderDetail.vue 在金额下方新增备注展示，空值/非字符串回退为「无」，样式改动最小且 scoped，未发现字段裁剪问题。"
+          }
+        ],
+        "followUps": [
+          "人工核对 ohpert-api/src/routes/order.js 的 GET /:id 处理逻辑，确认返回值直接透传 service 的 remark，未被字段白名单或序列化逻辑裁剪。",
+          "与需求方确认 remark 被 trim 是否符合「原始备注字符串」验收要求；若必须保留首尾空白，应仅在判空时 trim、返回原值。",
+          "补充最小回归测试：后端覆盖有备注/空备注/字段缺失/订单不存在 404，前端覆盖 remarkText 的非字符串、空串、纯空白、正常字符串四种输入。",
+          "考虑将 normalizeRemark 抽到公共 utils 或 tool，避免 service 反向依赖 model 的内部函数，降低分层耦合。"
+        ],
+        "generatedAt": "2026-10-27T02:23:53.288Z",
+        "aiModel": "gpt-4o-mini"
+      },
+      "userConfirmation": {
+        "confirmedAt": "2026-10-27T02:24:08.631Z",
+        "note": "确认通过，返工后 remark 边界处理已完善",
+        "decision": "approve"
+      },
+      "reworkRounds": 1,
+      "feedback": [
+        {
+          "at": "2026-10-27T02:20:29.243Z",
+          "content": "用户回滚了代码改动",
+          "by": "user"
+        },
+        {
+          "at": "2026-10-27T02:21:36.746Z",
+          "content": "请补充 remark 为纯空白字符串时的处理：后端应 trim 后为空则返回空字符串，前端同样显示「无」",
+          "by": "user"
+        },
+        {
+          "at": "2026-10-27T02:24:08.631Z",
+          "content": "确认通过，返工后 remark 边界处理已完善",
+          "by": "user"
+        }
+      ],
+      "jobId": null,
+      "error": null,
+      "targetRepos": []
+    }
+  ]
+}

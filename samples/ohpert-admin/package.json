@@ -1,0 +1,13 @@
+{
+  "name": "ohpert-admin",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build-check.mjs"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "antd": "^5.15.0",
+    "axios": "^1.6.8"
+  }
+}

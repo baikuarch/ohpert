@@ -1,0 +1,163 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-ink-950 text-slate-200 antialiased;
+    background-image:
+      radial-gradient(ellipse 70% 45% at 12% -8%, rgba(14, 165, 233, 0.1), transparent 70%),
+      radial-gradient(ellipse 55% 40% at 92% -4%, rgba(139, 92, 246, 0.09), transparent 70%);
+    background-attachment: fixed;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-ink-600 rounded-full border-2 border-solid border-transparent bg-clip-content;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-600;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #c3cad6 transparent;
+  }
+  ::selection {
+    background: rgba(14, 165, 233, 0.18);
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl border border-ink-700 bg-ink-900;
+    box-shadow:
+      0 1px 2px rgba(16, 24, 40, 0.04),
+      0 1px 3px rgba(16, 24, 40, 0.06);
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition
+           disabled:cursor-not-allowed disabled:opacity-40;
+  }
+  .btn-primary {
+    @apply btn bg-sky-600 text-white hover:bg-sky-500 shadow-sm active:bg-sky-700;
+  }
+  .btn-ghost {
+    @apply btn border border-ink-700 bg-ink-900 text-slate-300 hover:border-ink-600 hover:bg-ink-800 hover:text-slate-100;
+  }
+  .btn-danger {
+    @apply btn border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100;
+  }
+  .btn-success {
+    @apply btn bg-emerald-600 text-white hover:bg-emerald-500 shadow-sm;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium;
+  }
+  .input {
+    @apply w-full rounded-lg border border-ink-700 bg-ink-900 px-3 py-2 text-sm text-slate-200
+           placeholder:text-slate-600 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/15;
+  }
+  .label {
+    @apply mb-1 block text-xs font-medium text-slate-400;
+  }
+  .divider {
+    @apply my-4 h-px bg-ink-700;
+  }
+  .mono {
+    @apply font-mono text-[12.5px];
+  }
+  .nav-link {
+    @apply flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-400 transition hover:bg-ink-800 hover:text-slate-100;
+  }
+  .nav-link-active {
+    @apply bg-sky-50 text-sky-700 font-medium hover:bg-sky-50 hover:text-sky-700;
+  }
+}
+
+/* Diff lines on a white background */
+.diff-add {
+  color: #15803d;
+  background: #eefbf2;
+}
+.diff-del {
+  color: #be123c;
+  background: #fff1f3;
+}
+.diff-hunk {
+  color: #0369a1;
+  background: #f0f8ff;
+}
+.diff-meta {
+  color: #64748b;
+}
+
+.prose-ohpert h1 {
+  @apply mt-4 mb-2 text-lg font-semibold text-slate-100;
+}
+.prose-ohpert h2 {
+  @apply mt-4 mb-2 text-base font-semibold text-slate-100;
+}
+.prose-ohpert h3 {
+  @apply mt-3 mb-1.5 text-sm font-semibold text-slate-200;
+}
+.prose-ohpert p {
+  @apply my-1.5 text-sm leading-6 text-slate-300;
+}
+.prose-ohpert ul {
+  @apply my-1.5 list-disc pl-5 text-sm text-slate-300;
+}
+.prose-ohpert ol {
+  @apply my-1.5 list-decimal pl-5 text-sm text-slate-300;
+}
+.prose-ohpert li {
+  @apply my-0.5;
+}
+.prose-ohpert code {
+  @apply rounded bg-ink-800 px-1 py-0.5 font-mono text-[12px] text-sky-700;
+}
+.prose-ohpert pre {
+  @apply my-2 overflow-auto rounded-lg border border-ink-700 bg-ink-950 p-3 font-mono text-[12px];
+}
+.prose-ohpert pre code {
+  @apply bg-transparent p-0 text-slate-300;
+}
+.prose-ohpert table {
+  @apply my-2 w-full border-collapse text-sm;
+}
+.prose-ohpert th,
+.prose-ohpert td {
+  @apply border border-ink-700 px-2 py-1 text-left;
+}
+.prose-ohpert th {
+  @apply bg-ink-800 font-medium;
+}
+.prose-ohpert a {
+  @apply text-sky-600 underline;
+}
+.prose-ohpert blockquote {
+  @apply border-l-2 border-ink-700 pl-3 text-slate-400;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+.shimmer {
+  background: linear-gradient(90deg, #eef1f6 25%, #f7f9fc 50%, #eef1f6 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}

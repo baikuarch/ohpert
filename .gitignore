@@ -1,0 +1,26 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build output
+dist/
+coverage/
+*.tsbuildinfo
+
+# local runtime data (SQLite database, settings, worktrees)
+.data/
+.screenshots/
+
+# environment / secrets
+.env
+.env.*
+!.env.example
+*.local
+
+# editors and OS files
+.idea/
+.vscode/
+.DS_Store
+
+# logs
+*.log

@@ -1,0 +1,42 @@
+{
+  "name": "ohpert",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI 驱动的多 Git 工程需求管理与研发平台",
+  "license": "MIT",
+  "author": "ohpert contributors",
+  "keywords": [
+    "ai",
+    "coding-agent",
+    "multi-repo",
+    "requirements",
+    "git-worktree",
+    "local-first"
+  ],
+  "type": "module",
+  "packageManager": "pnpm@11.18.0",
+  "engines": {
+    "node": ">=22.5"
+  },
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:server": "pnpm --filter @ohpert/server dev",
+    "dev:web": "pnpm --filter @ohpert/web dev",
+    "build": "pnpm --filter @ohpert/web build && pnpm --filter @ohpert/server build",
+    "start": "node scripts/start.mjs",
+    "typecheck": "pnpm --filter @ohpert/server typecheck && pnpm --filter @ohpert/web typecheck",
+    "test": "pnpm --filter @ohpert/server test",
+    "lint": "eslint server/src server/test web/src",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "ui-check": "node scripts/ui-check.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "playwright-core": "^1.64.1",
+    "prettier": "^3.9.10",
+    "typescript-eslint": "^8.72.1"
+  }
+}
