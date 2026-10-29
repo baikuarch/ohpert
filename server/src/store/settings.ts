@@ -103,10 +103,10 @@ export function resolveAiSettings(): AiSettings {
   const baseURL = (stored.baseURL?.trim() || envBase || FALLBACK_BASE_URL).replace(/\/+$/, '');
   const model = stored.model?.trim() || envModel || FALLBACK_MODEL;
 
-  let source: AiSettings['source'] = 'none';
-  if (stored.apiKey?.trim()) source = 'settings';
-  else if (envKey) source = 'env';
-  else source = 'settings'; // local gateway may not need a key
+  let source: AiSettings['source'];
+  if (stored.apiKey?.trim() || !envKey)
+    source = 'settings'; // local gateway may not need a key
+  else source = 'env';
 
   return {
     baseURL,

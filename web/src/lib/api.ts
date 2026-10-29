@@ -8,7 +8,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     headers: { 'content-type': 'application/json', ...(init?.headers || {}) },
   });
   const text = await res.text();
-  let json: any = null;
+  let json: any;
   try {
     json = text ? JSON.parse(text) : null;
   } catch {

@@ -1,6 +1,5 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+@config "../tailwind.config.js";
 
 @layer base {
   html,
@@ -37,16 +36,17 @@
   }
 }
 
+@utility btn {
+  @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition
+         disabled:cursor-not-allowed disabled:opacity-40;
+}
+
 @layer components {
   .card {
     @apply rounded-xl border border-ink-700 bg-ink-900;
     box-shadow:
       0 1px 2px rgba(16, 24, 40, 0.04),
       0 1px 3px rgba(16, 24, 40, 0.06);
-  }
-  .btn {
-    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition
-           disabled:cursor-not-allowed disabled:opacity-40;
   }
   .btn-primary {
     @apply btn bg-sky-600 text-white hover:bg-sky-500 shadow-sm active:bg-sky-700;
